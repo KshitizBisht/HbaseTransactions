@@ -1,6 +1,7 @@
 package com.project.hbase.HbaseTransaction;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -30,7 +31,7 @@ public class HTransaction {
     Table TransactionTable;
     TimestampUpdate timestampUpdate;
     HashMap<String, NewTransactionsDetails> queries;
-    HashMap<UpdatesTransactionDetails, byte[]> newQueries;
+    HashMap<UpdatesTransactionDetails, byte[]> columnToValue;
     public ExecutorService executorService;
     public byte[] rowLockFamily = Bytes.toBytes("cf");
     public byte[] rowLockQuantifier = Bytes.toBytes("rq");
@@ -44,12 +45,11 @@ public class HTransaction {
      */
     public HTransaction(Connection connection, Admin admin) {
         this.transactionId = UUID.randomUUID().toString();
-        // this.transactionId = "SSS";
         this.connection = connection;
         this.admin = admin;
         this.TxnProcess = true;
         this.queries = new HashMap<String, NewTransactionsDetails>();
-        this.newQueries = new HashMap<UpdatesTransactionDetails, byte[]>();
+        this.columnToValue = new HashMap<UpdatesTransactionDetails, byte[]>();
 
         try {
             if (!admin.tableExists(TableName.valueOf("Monitor"))) {
@@ -127,49 +127,33 @@ public class HTransaction {
         System.out.println(message);
     }
 
-    /**
-     * Initial draft version for get Function
-     * 
-     * @param table
-     * @param rowId
-     */
-    public void Get(String table, byte[] rowId) {
-        try {
-            Table newTable = this.connection.getTable(TableName.valueOf(table));
-            Put put = new Put(rowId);
-            put.addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(this.transactionId));
-            CheckAndMutate checkAndMutate = CheckAndMutate.newBuilder(rowId)
-                    .ifNotExists(rowLockFamily, rowLockQuantifier).build(put);
+    // ---------------------------------------------------------------- Read Starts ----------------------------------------------------------------
 
-            CheckAndMutateResult result = newTable.checkAndMutate(checkAndMutate);
-            System.out.println(result.isSuccess());
-
-        } catch (Exception e) {
-            System.out.println("Error in read");
-        }
-
-    }
-
-    public byte[] getOldValue(String tableName, byte[] rowId, byte[] cf, byte[] cq) {
-        byte[] oldValue = new byte[1];
+    public boolean rowExists(String tableName, byte[] rowId) {
         try {
             Table table = this.connection.getTable(TableName.valueOf(tableName));
-            oldValue = table.get(new Get(rowId)).getValue(cf, cq);
+            return table.exists(new Get(rowId));
         } catch (Exception e) {
-            System.out.println("Error in getOldValue");
+
         }
-        return oldValue;
+        return false;
     }
 
     public byte[] GetRow(String tableName, byte[] rowId, byte[] cf, byte[] cq) {
-        // CALL THE acquireRowLock() method
+        if (!rowExists(tableName, rowId)) {
+            System.out.println("Row does not exists");
+            return new byte[1];
+        }
+
+        System.out.println("Getting row");
         boolean rowLockAcquired = acquireRowLock(tableName, rowId);
         byte[] result = new byte[1];
         boolean checkTransaction;
 
         if (!rowLockAcquired) {
-            byte[] oldrowId = getOldValue(tableName, rowId, cf, cq);
+            byte[] oldrowId = getOldValue(tableName, rowId);
             checkTransaction = CheckTransactionTableForLock(oldrowId);
+            System.out.println("checking the result for checktransactions " + checkTransaction);
             if (!checkTransaction) {
                 System.out.println("Lock already acquired. Try again");
             } else {
@@ -178,8 +162,11 @@ public class HTransaction {
         }
         if (rowLockAcquired) {
             try {
+                System.out.println("row lock acquired" + rowLockAcquired);
                 Table table = this.connection.getTable(TableName.valueOf(tableName));
+                System.out.println("Got the table");
                 result = table.get(new Get(rowId)).getValue(cf, cq);
+                // System.out.println(new String(result, StandardCharsets.UTF_8));
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -190,6 +177,25 @@ public class HTransaction {
     }
 
     /**
+     * This method is called to get the id of the transaction holding the lock.
+     * 
+     * @param tableName
+     * @param rowId
+     * @return
+     */
+    public byte[] getOldValue(String tableName, byte[] rowId) {
+        byte[] oldValue = new byte[1];
+        try {
+            Table table = this.connection.getTable(TableName.valueOf(tableName));
+            oldValue = table.get(new Get(rowId)).getValue(rowLockFamily, rowLockQuantifier);
+            System.out.println(new String(oldValue, StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            System.out.println("Error in getOldValue");
+        }
+        return oldValue;
+    }
+
+    /**
      * method to acuire lock acess on a row
      * 
      * @param table
@@ -197,33 +203,18 @@ public class HTransaction {
      * @return
      */
     private boolean acquireRowLock(String table, byte[] rowId) {
-
+        System.out.println("acquiring row lock on " + table);
         boolean checkAndMutatePerformed = false;
-        int exponentialBackOff = 2;
-        int numberOfTriesToAcquireLock = 0;
 
         try {
             Table newTable = this.connection.getTable(TableName.valueOf(table));
             Put put = new Put(rowId);
             put.addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(this.transactionId));
-
-            while (true) {
-
-                CheckAndMutate checkAndMutate = CheckAndMutate.newBuilder(rowId)
-                        .ifNotExists(rowLockFamily, rowLockQuantifier).build(put);
-                CheckAndMutateResult result = newTable.checkAndMutate(checkAndMutate);
-                if (result.isSuccess()) {
-                    checkAndMutatePerformed = true;
-                    break;
-                }
-
-                TimeUnit.SECONDS.sleep(exponentialBackOff);
-                exponentialBackOff = exponentialBackOff * 2;
-                numberOfTriesToAcquireLock += 1;
-
-                if (numberOfTriesToAcquireLock == 5) {
-                    break;
-                }
+            CheckAndMutate checkAndMutate = CheckAndMutate.newBuilder(rowId)
+                    .ifNotExists(rowLockFamily, rowLockQuantifier).build(put);
+            CheckAndMutateResult result = newTable.checkAndMutate(checkAndMutate);
+            if (result.isSuccess()) {
+                checkAndMutatePerformed = true;
             }
         } catch (Exception e) {
             System.out.println("Error in acquiring Locks");
@@ -245,6 +236,8 @@ public class HTransaction {
             long oldTimestamp = oldTxnTimestamp.rawCells()[0].getTimestamp();
             long newTimestamp = newTxnTimestamp.rawCells()[0].getTimestamp();
             if (Math.abs(newTimestamp - oldTimestamp) > 9) {
+                System.out.println(newTimestamp - oldTimestamp);
+
                 return true;
             } else {
                 return false;
@@ -282,6 +275,7 @@ public class HTransaction {
 
                 CheckAndMutateResult checkAndMutateResult = table.checkAndMutate(checkAndMutate);
                 if (checkAndMutateResult.isSuccess()) {
+                    System.out.println("force lock access");
                     forceLockAcessSuccess = true;
                     break;
                 }
@@ -294,41 +288,58 @@ public class HTransaction {
         return forceLockAcessSuccess;
     }
 
-    // cannot do this as there may be transaction with same id but different column
-    // names
-    // public byte[] getBytes(byte[] bytes, int offset, int length){
-    // return Arrays.copyOfRange(bytes, offset, offset+length);
-    // }
+    // ---------------------------------------------------------------- Read Finished ----------------------------------------------------------------
+    public void writePut(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier, byte[] value){
+        System.out.println("writing on row");
+        boolean rowLockAcquired = false;
+        boolean checkWriteLockAcquired = false;
+        try{
+            Table table = this.connection.getTable(TableName.valueOf(tableName));
+            if(table.exists(new Get(Bytes.toBytes(rowId)))){
+                rowLockAcquired = acquireRowLock(tableName, Bytes.toBytes(rowId));
+                if(!rowLockAcquired){
+                    byte[] oldrowId = getOldValue(tableName, Bytes.toBytes(rowId));
+                    checkWriteLockAcquired = CheckTransactionTableForLock(oldrowId);
+                    System.out.println("checking the result for write checktransactions " + checkWriteLockAcquired);
+                    if (!checkWriteLockAcquired) {
+                        System.out.println("Lock already acquired. Try again");
+                    } else {
+                        rowLockAcquired = ForceLockAccess(tableName, Bytes.toBytes(rowId), oldrowId, Bytes.toBytes(this.transactionId));
+                    }
+                }
+                if (rowLockAcquired) {
+                        System.out.println("write row lock acquired" + rowLockAcquired);
+                        System.out.println("Got the table");
+                        table.put(new Put(Bytes.toBytes(rowId)).addColumn(columnFamily, columnQuantifier, value));
+                        System.out.println("Successfully written in row");
+                    }
 
-    // public void commit(){
-    // Table table;
-    // for (Entry<String, String> set :
-    // this.queries.entrySet()) {
-    // try {
-    // table = this.connection.getTable(TableName.valueOf(set.getKey()));
-    // Result result = table.get(new
-    // Get(Bytes.toBytes(set.getValue()+"UncommittedRow")));
-    // byte[] resultBytes = result.listCells().get(0).getFamilyArray();
+            } else{
+                // Is lock necessary if adding new rowId?
+                //table.put(new Put(Bytes.toBytes(rowId)).addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(this.transactionId)));
+                table.put(new Put(Bytes.toBytes(rowId)).addColumn(columnFamily, columnQuantifier, value));
+            }
+            
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
 
-    // byte[] row = Bytes.toBytes(set.getValue());
-    // byte[] columnFamily = getBytes(resultBytes,
-    // result.listCells().get(0).getFamilyOffset(),
-    // result.listCells().get(0).getFamilyLength());
-    // byte[] columnQuantifier = getBytes(resultBytes,
-    // result.listCells().get(0).getQualifierOffset(),
-    // result.listCells().get(0).getQualifierLength());
-    // byte[] value = getBytes(resultBytes,
-    // result.listCells().get(0).getValueOffset(),
-    // result.listCells().get(0).getValueLength());
-    // table.put(new Put(new Put(row).addColumn(columnFamily, columnQuantifier,
-    // value)));
-    // } catch (IOException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
+    public void Put(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier, byte[] value) {
+        try {
+            Table table = this.connection.getTable(TableName.valueOf(tableName));
+            NewTransactionsDetails newTransactionsDetails = new NewTransactionsDetails(rowId, columnFamily,
+                    columnQuantifier);
+            this.queries.put(tableName, newTransactionsDetails);
+            System.out.println("put");
+            table.put(new Put(Bytes.toBytes(rowId + "uncommitted")).addColumn(columnFamily, columnQuantifier, value));
+            table.put(new Put(Bytes.toBytes(rowId)).addColumn(rowLockFamily, rowLockQuantifier,
+                    Bytes.toBytes(this.transactionId)));
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
 
-    // }
-    // }
+        }
+    }
 
     public void commit() {
         Table table;
@@ -338,84 +349,83 @@ public class HTransaction {
                 byte[] row = Bytes.toBytes(set.getValue().getRowId() + "uncommitted");
                 byte[] result = table.get(new Get(row)).getValue(set.getValue().getCf(), set.getValue().getCq());
                 byte[] newRowId = Bytes.toBytes(set.getValue().getRowId());
-                table.put(new Put(newRowId).addColumn(set.getValue().getCf(), set.getValue().getCq(), result));
+                //use the custom put method here.
+                //table.put(new Put(newRowId).addColumn(set.getValue().getCf(), set.getValue().getCq(), result));
             } catch (Exception e) {
 
             }
         }
     }
 
-    public void Put(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier, byte[] value) {
-        try {
-            Table table = this.connection.getTable(TableName.valueOf(tableName));
-            // boolean checkRowExists = table.get(new Get(rowId)).isEmpty();
-            // if(checkRowExists){
-
-            NewTransactionsDetails newTransactionsDetails = new NewTransactionsDetails(rowId, columnFamily,
-                    columnQuantifier);
-            this.queries.put(tableName, newTransactionsDetails);
-            System.out.println("put");
-            table.put(new Put(Bytes.toBytes(rowId + "uncommitted")).addColumn(columnFamily, columnQuantifier, value));
-            table.put(new Put(Bytes.toBytes(rowId)).addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(rowId)));
-
-            // }
-
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-
-        }
-    }
-
+    // table -> rowId -> columnFamily and columnQuantifier -> value
     public void newPut(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier, byte[] value) {
+        UpdatesTransactionDetails newTransactionsDetails = new UpdatesTransactionDetails(tableName, rowId, columnFamily,
+                columnQuantifier);
+        this.columnToValue.put(newTransactionsDetails, value);
+        System.out.println("New put");
+
+    }
+
+    public void mapGet(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier) {
+        UpdatesTransactionDetails newTransactionsDetails = new UpdatesTransactionDetails(tableName, rowId, columnFamily,
+                columnQuantifier);
         try {
-            Table table = this.connection.getTable(TableName.valueOf(tableName));
-            // boolean checkRowExists = table.get(new Get(rowId)).isEmpty();
-            // if(checkRowExists){
+            if (this.columnToValue.get(newTransactionsDetails) != null) {
+                System.out.println("Get value from Map");
+                System.out.println(new String(this.columnToValue.get(newTransactionsDetails), StandardCharsets.UTF_8));
+            } else {
+                System.out.println("Get value from table");
+                byte[] res = GetRow(tableName, Bytes.toBytes(rowId), columnFamily, columnQuantifier);
+                System.out.println(new String(res, StandardCharsets.UTF_8));
+            }
 
-            UpdatesTransactionDetails newTransactionsDetails = new UpdatesTransactionDetails(rowId, columnFamily,
-                    columnQuantifier);
-            this.newQueries.put(newTransactionsDetails, value);
-            System.out.println("New put");
-            table.put(new Put(Bytes.toBytes(rowId + "uncommitted")).addColumn(columnFamily, columnQuantifier, value));
-            table.put(new Put(Bytes.toBytes(rowId)).addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(rowId)));
-
-            // }
-
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
     }
 
-    public byte[] getNewRead(String tableName, String rowId, byte[] columnFamily, byte[] columnQuantifier) {
-        UpdatesTransactionDetails newRead = new UpdatesTransactionDetails(rowId, columnFamily, columnQuantifier);
-        if (this.newQueries.containsKey(newRead)) {
-            return this.newQueries.get(newRead);
-
-        } else {
+    public void commitQueries() {
+        Table table;
+        for (Entry<UpdatesTransactionDetails, byte[]> set : this.columnToValue.entrySet()) {
             try {
-                Table table = this.connection.getTable(TableName.valueOf(tableName));
-
+                table = this.connection.getTable(TableName.valueOf(set.getKey().tableName));
+                // call the custom write method here.
             } catch (Exception e) {
-                System.out.println("Error in getting table for new read");
+                System.out.println(e.getMessage());
             }
-
         }
-
     }
 
     public static void main(String[] args) {
+        // try {
+        // Configuration conf = HBaseConfiguration.create();
+        // Connection conn = ConnectionFactory.createConnection(conf);
+        // Admin admin = conn.getAdmin();
+        // HTransaction htx = new HTransaction(conn, admin);
+        // htx.start();
+        // System.out.println(htx.transactionId);
+        // byte[] row = Bytes.toBytes("Arlo");
+        // byte[] result = htx.GetRow("T2", row, Bytes.toBytes("cf"),
+        // Bytes.toBytes("cf"));
+        // System.out.println(new String(result, StandardCharsets.UTF_8));
+        // // htx.Put("T2", "Arlo", Bytes.toBytes("cf"), Bytes.toBytes("cf"),
+        // // Bytes.toBytes("Cat"));
+        // // htx.commit();
+
+        // htx.stop();
+        // } catch (IOException ex) {
+        // }
         try {
-            Configuration conf = HBaseConfiguration.create();
+            Configuration conf = new Configuration();
             Connection conn = ConnectionFactory.createConnection(conf);
             Admin admin = conn.getAdmin();
             HTransaction htx = new HTransaction(conn, admin);
-            byte[] row = Bytes.toBytes("row");
-            htx.Put("T2", "row212", Bytes.toBytes("cf"), Bytes.toBytes("cq"), Bytes.toBytes("hello"));
-            htx.commit();
-        } catch (IOException ex) {
+            htx.newPut("T2", "Caitlin", Bytes.toBytes("cf"), Bytes.toBytes("cf"), Bytes.toBytes("This is new Value"));
+            htx.mapGet("T2", "Arlo", Bytes.toBytes("cf"), Bytes.toBytes("cf"));
+            htx.mapGet("T2", "Caitlin", Bytes.toBytes("cf"), Bytes.toBytes("cf"));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
-
         // try{
         // Configuration conf = HBaseConfiguration.create();
         // Connection conn = ConnectionFactory.createConnection(conf);
