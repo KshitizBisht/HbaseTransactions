@@ -1,0 +1,103 @@
+(base) MacBook-Pro-2:YCSB kshitizbisht$ python2 bin/ycsb load hbase1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient
+[WARN]  Running against a source checkout. In order to get our runtime dependencies we'll have to invoke Maven. Depending on the state of your system, this may take ~30-45 seconds
+[DEBUG]  Running 'mvn -pl site.ycsb:hbase1-binding -am package -DskipTests dependency:build-classpath -DincludeScope=compile -Dmdep.outputFilterFile=true'
+java -cp /Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/conf:/Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/target/hbase1-binding-0.18.0-SNAPSHOT.jar:/Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/target/ycsb-hbase1-binding-0.18.0-SNAPSHOT/lib/hbase1-binding-0.18.0-SNAPSHOT.jar:/Users/kshitizbisht/.m2/repository/org/apache/htrace/htrace-core4/4.1.0-incubating/htrace-core4-4.1.0-incubating.jar:/Users/kshitizbisht/.m2/repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar:/Users/kshitizbisht/.m2/repository/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar:/Users/kshitizbisht/.m2/repository/com/github/stephenc/findbugs/findbugs-annotations/1.3.9-1/findbugs-annotations-1.3.9-1.jar:/Users/kshitizbisht/.m2/repository/org/hdrhistogram/HdrHistogram/2.1.4/HdrHistogram-2.1.4.jar:/Users/kshitizbisht/.m2/repository/log4j/log4j/1.2.17/log4j-1.2.17.jar:/Users/kshitizbisht/.m2/repository/org/apache/htrace/htrace-core/3.1.0-incubating/htrace-core-3.1.0-incubating.jar:/Users/kshitizbisht/.m2/repository/org/codehaus/jackson/jackson-mapper-asl/1.9.4/jackson-mapper-asl-1.9.4.jar:/Users/kshitizbisht/.m2/repository/org/slf4j/slf4j-log4j12/1.7.25/slf4j-log4j12-1.7.25.jar:/Users/kshitizbisht/.m2/repository/org/codehaus/jackson/jackson-core-asl/1.9.4/jackson-core-asl-1.9.4.jar:/Users/kshitizbisht/.m2/repository/org/apache/hbase/hbase-shaded-client/1.4.12/hbase-shaded-client-1.4.12.jar:/Users/kshitizbisht/Desktop/YCSB/YCSB/core/target/core-0.18.0-SNAPSHOT.jar site.ycsb.Client -db site.ycsb.db.hbase1.HBaseClient1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient -load
+Command line: -db site.ycsb.db.hbase1.HBaseClient1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient -load
+YCSB Client 0.18.0-SNAPSHOT
+
+Loading workload...
+log4j:WARN No appenders could be found for logger (org.apache.htrace.core.Tracer).
+log4j:WARN Please initialize the log4j system properly.
+log4j:WARN See http://logging.apache.org/log4j/1.2/faq.html#noconfig for more info.
+Starting test.
+2023-02-14 22:32:41:365 0 sec: 0 operations; est completion in 0 second
+DBWrapper: report latency for each error is false and specific error codes to track for latency are: []
+2023-02-14 22:32:44:478 3 sec: 1000 operations; 317.76 current ops/sec; [CLEANUP: Count=2, Max=32223, Min=7, Avg=16111.5, 90=32223, 99=32223, 99.9=32223, 99.99=32223] [INSERT: Count=1000, Max=36383, Min=372, Avg=1260.17, 90=2709, 99=4259, 99.9=7011, 99.99=36383]
+[OVERALL], RunTime(ms), 3147
+[OVERALL], Throughput(ops/sec), 317.7629488401652
+[TOTAL_GCS_G1_Young_Generation], Count, 2
+[TOTAL_GC_TIME_G1_Young_Generation], Time(ms), 7
+[TOTAL_GC_TIME_%_G1_Young_Generation], Time(%), 0.22243406418811568
+[TOTAL_GCS_G1_Old_Generation], Count, 0
+[TOTAL_GC_TIME_G1_Old_Generation], Time(ms), 0
+[TOTAL_GC_TIME_%_G1_Old_Generation], Time(%), 0.0
+[TOTAL_GCs], Count, 2
+[TOTAL_GC_TIME], Time(ms), 7
+[TOTAL_GC_TIME_%], Time(%), 0.22243406418811568
+[CLEANUP], Operations, 2
+[CLEANUP], AverageLatency(us), 16111.5
+[CLEANUP], MinLatency(us), 7
+[CLEANUP], MaxLatency(us), 32223
+[CLEANUP], 95thPercentileLatency(us), 32223
+[CLEANUP], 99thPercentileLatency(us), 32223
+[INSERT], Operations, 1000
+[INSERT], AverageLatency(us), 1260.17
+[INSERT], MinLatency(us), 372
+[INSERT], MaxLatency(us), 36383
+[INSERT], 95thPercentileLatency(us), 3079
+[INSERT], 99thPercentileLatency(us), 4259
+[INSERT], Return=OK, 1000
+(base) MacBook-Pro-2:YCSB kshitizbisht$ python2 bin/ycsb run hbase1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient
+[WARN]  Running against a source checkout. In order to get our runtime dependencies we'll have to invoke Maven. Depending on the state of your system, this may take ~30-45 seconds
+[DEBUG]  Running 'mvn -pl site.ycsb:hbase1-binding -am package -DskipTests dependency:build-classpath -DincludeScope=compile -Dmdep.outputFilterFile=true'
+java -cp /Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/conf:/Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/target/hbase1-binding-0.18.0-SNAPSHOT.jar:/Users/kshitizbisht/Desktop/YCSB/YCSB/hbase1/target/ycsb-hbase1-binding-0.18.0-SNAPSHOT/lib/hbase1-binding-0.18.0-SNAPSHOT.jar:/Users/kshitizbisht/.m2/repository/org/apache/htrace/htrace-core4/4.1.0-incubating/htrace-core4-4.1.0-incubating.jar:/Users/kshitizbisht/.m2/repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar:/Users/kshitizbisht/.m2/repository/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar:/Users/kshitizbisht/.m2/repository/com/github/stephenc/findbugs/findbugs-annotations/1.3.9-1/findbugs-annotations-1.3.9-1.jar:/Users/kshitizbisht/.m2/repository/org/hdrhistogram/HdrHistogram/2.1.4/HdrHistogram-2.1.4.jar:/Users/kshitizbisht/.m2/repository/log4j/log4j/1.2.17/log4j-1.2.17.jar:/Users/kshitizbisht/.m2/repository/org/apache/htrace/htrace-core/3.1.0-incubating/htrace-core-3.1.0-incubating.jar:/Users/kshitizbisht/.m2/repository/org/codehaus/jackson/jackson-mapper-asl/1.9.4/jackson-mapper-asl-1.9.4.jar:/Users/kshitizbisht/.m2/repository/org/slf4j/slf4j-log4j12/1.7.25/slf4j-log4j12-1.7.25.jar:/Users/kshitizbisht/.m2/repository/org/codehaus/jackson/jackson-core-asl/1.9.4/jackson-core-asl-1.9.4.jar:/Users/kshitizbisht/.m2/repository/org/apache/hbase/hbase-shaded-client/1.4.12/hbase-shaded-client-1.4.12.jar:/Users/kshitizbisht/Desktop/YCSB/YCSB/core/target/core-0.18.0-SNAPSHOT.jar site.ycsb.Client -db site.ycsb.db.hbase1.HBaseClient1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient -t
+Command line: -db site.ycsb.db.hbase1.HBaseClient1 -s -P workloads/workloada -p table=usertable -p columnfamily=family -p hbase.custombinding=org.example.YCSBClient -t
+YCSB Client 0.18.0-SNAPSHOT
+
+Loading workload...
+log4j:WARN No appenders could be found for logger (org.apache.htrace.core.Tracer).
+log4j:WARN Please initialize the log4j system properly.
+log4j:WARN See http://logging.apache.org/log4j/1.2/faq.html#noconfig for more info.
+Starting test.
+2023-02-14 22:32:58:427 0 sec: 0 operations; est completion in 0 second
+DBWrapper: report latency for each error is false and specific error codes to track for latency are: []
+2023-02-14 22:33:01:334 2 sec: 1000 operations; 340.14 current ops/sec; [READ: Count=511, Max=9847, Min=310, Avg=877.54, 90=1987, 99=3359, 99.9=4029, 99.99=9847] [CLEANUP: Count=2, Max=36671, Min=10, Avg=18333, 90=36671, 99=36671, 99.9=36671, 99.99=36671] [UPDATE: Count=489, Max=39679, Min=486, Avg=1381.09, 90=2411, 99=3415, 99.9=39679, 99.99=39679]
+[OVERALL], RunTime(ms), 2940
+[OVERALL], Throughput(ops/sec), 340.13605442176873
+[TOTAL_GCS_G1_Young_Generation], Count, 2
+[TOTAL_GC_TIME_G1_Young_Generation], Time(ms), 7
+[TOTAL_GC_TIME_%_G1_Young_Generation], Time(%), 0.2380952380952381
+[TOTAL_GCS_G1_Old_Generation], Count, 0
+[TOTAL_GC_TIME_G1_Old_Generation], Time(ms), 0
+[TOTAL_GC_TIME_%_G1_Old_Generation], Time(%), 0.0
+[TOTAL_GCs], Count, 2
+[TOTAL_GC_TIME], Time(ms), 7
+[TOTAL_GC_TIME_%], Time(%), 0.2380952380952381
+[READ], Operations, 511
+[READ], AverageLatency(us), 877.5401174168297
+[READ], MinLatency(us), 310
+[READ], MaxLatency(us), 9847
+[READ], 95thPercentileLatency(us), 2283
+[READ], 99thPercentileLatency(us), 3359
+[READ], Return=OK, 511
+[CLEANUP], Operations, 2
+[CLEANUP], AverageLatency(us), 18333.0
+[CLEANUP], MinLatency(us), 10
+[CLEANUP], MaxLatency(us), 36671
+[CLEANUP], 95thPercentileLatency(us), 36671
+[CLEANUP], 99thPercentileLatency(us), 36671
+[UPDATE], Operations, 489
+[UPDATE], AverageLatency(us), 1381.087934560327
+[UPDATE], MinLatency(us), 486
+[UPDATE], MaxLatency(us), 39679
+[UPDATE], 95thPercentileLatency(us), 2865
+[UPDATE], 99thPercentileLatency(us), 3415
+[UPDATE], Return=OK, 489
+
+
+else{
+//          Table table = this.connection.getTable(TableName.valueOf(set.getKey().tableName));
+//          System.out.println("Inserting a new row");
+//          Put lockput = new Put(Bytes.toBytes(set.getKey().rowId)));
+//          lockput.addColumn(rowLockFamily, rowLockQuantifier, Bytes.toBytes(this.transactionId));
+//          CheckAndMutate checkAndMutate = CheckAndMutate.newBuilder(Bytes.toBytes(set.getKey().rowId))
+//                  .ifNotExists(rowLockFamily, rowLockQuantifier).build(lockput);
+//
+//          CheckAndMutateResult checkAndMutateResult = table.checkAndMutate(checkAndMutate);
+//          if(checkAndMutateResult.isSuccess()){
+//            table.put(new Put(Bytes.toBytes(set.getKey().rowId)).addColumn(set.getKey().columnFamily, set.getKey().columnQuantifier, set.getValue()));
+//            done = true;
+//            System.out.println("WRITTEN WITH NEW LOCK");
+//          }
+//        }
+//
